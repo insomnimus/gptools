@@ -1,0 +1,6 @@
+[style]
+based_on_style = pep8
+use_tabs = True
+column_limit = 120
+continuation_align_style = FIXED
+continuation_indent_width = 4

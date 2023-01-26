@@ -6,6 +6,7 @@ import sys
 import guitarpro
 from gptools import *
 
+
 def normalize_track(track: guitarpro.models.Track, target_peak: int) -> bool:
 	peak = get_peak_velocity(track)
 	if peak == target_peak: return False
@@ -13,8 +14,9 @@ def normalize_track(track: guitarpro.models.Track, target_peak: int) -> bool:
 		for v in m.voices:
 			for b in v.beats:
 				for n in b.notes:
-					n.velocity = int( n.velocity * (target_peak / peak))
+					n.velocity = int(n.velocity * (target_peak / peak))
 	return True
+
 
 def normalize_song(song: guitarpro.models.Song, target_peak: int):
 	peak = 1
@@ -26,44 +28,59 @@ def normalize_song(song: guitarpro.models.Song, target_peak: int):
 		t.channel.volume = int(t.channel.volume * (target_peak / peak))
 	return True
 
+
 def main():
-	p = argparse.ArgumentParser(
-		description = "Normalize a guitarpro tabs volume",
-	)
+	p = argparse.ArgumentParser(description="Normalize a guitarpro tabs volume", )
 
 	p.add_argument(
-		"-v", "--volume",
-		required = True,
-		type = int,
-		help = "The target peak volume (1-1023 in case of global, 1-127 in case of midi velocities)",
+		"-v",
+		"--volume",
+		required=True,
+		type=int,
+		help="The target peak volume (1-1023 in case of global, 1-127 in case of midi velocities)",
 	)
 	p.add_argument(
 		"--midi-velocity",
-		help = "Normalize note velocities instead (1-127)",
-		action = "store_true",
+		help="Normalize note velocities instead (1-127)",
+		action="store_true",
 	)
 	p.add_argument(
-		"path",
-		help = "Path to a guitarpro file",
+		"input",
+		help="Path to a guitarpro file",
 	)
 	p.add_argument(
 		"out",
-		help = "The file to save to",
+		help="The file to save to",
+	)
+	p.add_argument(
+		"-f",
+		"--force",
+		action="store_true",
+		help="Do not prompt for overwriting",
 	)
 
 	args = p.parse_args()
 	if args.midi_velocity and not 1 <= args.volume <= 127:
 		eprint("error: with `--midi-velocity`, the value of `--volume` must be between 1 and 127")
 		exit(2)
-	elif not args.midi_velocity and not 1<= args.volume <= 1023:
+	elif not args.midi_velocity and not 1 <= args.volume <= 1023:
 		eprint(f"error: the value for `--volume` must be between 1 and 1023")
 		exit(2)
 
 	t = None
 	try:
-		t = guitarpro.parse(args.path)
+		t = guitarpro.parse(args.input)
 	except Exception as e:
 		eprint(f"error: {e}")
+		exit(1)
+
+	out = Path(args.out)
+	if out.is_dir():
+		inp = Path(args.input)
+		out = Path(inp.name)
+
+	if out.is_dir():
+		eprint("error: the output path points to a directory")
 		exit(1)
 
 	if args.midi_velocity:
@@ -72,8 +89,14 @@ def main():
 	else:
 		normalize_song(t, args.volume)
 
+	if not args.force and out.exists() and not prompt_bool(f"the file {out} already exists; overwrite it?"):
+		eprint("not overwriting - exiting")
+		exit(4)
+
+	version = infer_version(out)
+
 	try:
-		guitarpro.write(t, args.out)
+		guitarpro.write(t, out, version=version, encoding="UTF8")
 	except Exception as e:
 		eprint(f"error saving modifications: {e}")
 		exit(1)
