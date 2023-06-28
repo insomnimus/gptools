@@ -60,8 +60,8 @@ def main():
 		exit(1)
 
 	out = Path(args.out)
+	inp = Path(args.input)
 	if out.is_dir():
-		inp = Path(args.input)
 		out = Path(inp.name)
 
 	if out.is_dir():
@@ -79,7 +79,7 @@ def main():
 		eprint("not overwriting - exiting")
 		exit(4)
 
-	version = infer_version(out)
+	version = None if inp.suffix == out.suffix else infer_version(out)
 
 	try:
 		guitarpro.write(t, out, version=version, encoding="UTF8")
